@@ -5,7 +5,9 @@ module Node = struct
 
   let stop _ = failwith "TODO"
 
-  let send_payment _ _ = failwith "TODO"
+  let send_payment _t ~sender ~receiver amount fee ?nonce:_ ?memo:_ =
+    let _ = (sender, receiver, amount, fee) in
+    failwith "TODO"
 end
 
 type t =

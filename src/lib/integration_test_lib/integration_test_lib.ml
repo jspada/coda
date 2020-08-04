@@ -39,14 +39,26 @@ end
  *)
 module type Engine_intf = sig
   module Node : sig
+    open Coda_base
+    open Currency
+    open Signature_lib
+
     type t
 
     val start : t -> unit Deferred.t
 
     val stop : t -> unit Deferred.t
 
+    (* inputs are same as Graphql_queries.Send_payment.make *)
     val send_payment :
-      t -> User_command_input.t -> Coda_base.User_command.t Deferred.t
+         t
+      -> sender:Public_key.t
+      -> receiver:Public_key.t
+      -> Amount.t
+      -> Fee.t
+      -> ?nonce:Account.Nonce.t
+      -> ?memo:User_command_memo.t
+      -> User_command.t Deferred.Or_error.t
   end
 
   module Network : sig

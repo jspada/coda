@@ -137,6 +137,7 @@ module Network_config = struct
             { base= Accounts runtime_accounts
             ; add_genesis_winner= None
             ; num_accounts= None
+            ; add_genesis_winner= None (* TODO: is this right? *)
             ; hash= None
             ; name= None } }
     in
