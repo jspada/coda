@@ -51,14 +51,14 @@ module type Engine_intf = sig
 
     (* inputs are same as Graphql_queries.Send_payment.make *)
     val send_payment :
-         t
-      -> sender:Public_key.t
+         sender:Public_key.t
       -> receiver:Public_key.t
       -> Amount.t
       -> Fee.t
       -> ?nonce:Account.Nonce.t
-      -> ?memo:User_command_memo.t
-      -> User_command.t Deferred.Or_error.t
+      -> ?memo:string
+      -> unit
+      -> unit
   end
 
   module Network : sig
