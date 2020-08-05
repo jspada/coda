@@ -682,20 +682,63 @@ let wait_for :
       Or_error.combine_errors_unit [Error e; res]
 
 let wait_for_payment ?(num_tries : int = 5) breadcrumb_added_subscription
-    ~sender:_ ~receiver:_ _amount _fee : unit Or_error.t Deferred.t =
+    ~sender ~receiver payment_amount : unit Or_error.t Deferred.t =
   let rec go n =
     if n <= 0 then
       return
         (Error
            (Error.of_string
-              (sprintf "wait_for_payment: exceeded num_tries = %d" num_tries)))
+              (sprintf
+                 "wait_for_payment: did not find matching payment after %d \
+                  trie(s)"
+                 num_tries)))
     else
-      let%map _user_cmd_with_statuses_json =
-        Subscription.pull breadcrumb_added_subscription
+      let%bind results =
+        let open Deferred.Or_error.Let_syntax in
+        let%bind user_cmds_json =
+          Subscription.pull breadcrumb_added_subscription
+        in
+        Deferred.return
+          (or_error_list_map user_cmds_json ~f:Breadcrumb_added_query.parse)
       in
-      Error
-        (Error.of_string
-           (sprintf "wait_for_payment: exceeded num_tries = %d" num_tries))
+      match results with
+      | Error err ->
+          Error.raise err
+      | Ok res ->
+          let open Coda_base in
+          let open Signature_lib in
+          (* res is a list of Breadcrumb_added_query.Result.t
+           each of those contains a list of user commands
+           fold over the fold of each list
+           as soon as we find a matching payment, don't
+            check any other commands
+        *)
+          let found =
+            List.fold res ~init:false ~f:(fun found_outer {user_commands} ->
+                if found_outer then true
+                else
+                  List.fold user_commands ~init:false
+                    ~f:(fun found_inner cmd_with_status ->
+                      if found_inner then true
+                      else
+                        (* N.B.: we're not checking fee, nonce or memo *)
+                        let cmd = cmd_with_status.With_status.data in
+                        match
+                          User_command.payload cmd |> User_command_payload.body
+                        with
+                        | Payment {source_pk; receiver_pk; amount; token_id= _}
+                          ->
+                            Public_key.Compressed.equal source_pk
+                              (Public_key.compress sender)
+                            && Public_key.Compressed.equal receiver_pk
+                                 (Public_key.compress receiver)
+                            && Currency.Amount.equal amount payment_amount
+                        | _ ->
+                            false ) )
+          in
+          if found then return (Ok ())
+          else (* TODO: should we wait between tries? *)
+            go (n - 1)
   in
   go num_tries
 
