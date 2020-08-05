@@ -1,4 +1,5 @@
-open Core
+open Core_kernel
+open Async
 
 module Node = struct
   type t = string
@@ -15,18 +16,17 @@ module Node = struct
     let run_coda ~cmd ~subcmd flags =
       if Option.is_none !node_opt then
         failwith "run_coda: node has not been set" ;
+      let open Deferred.Or_error.Let_syntax in
       let node = Option.value_exn !node_opt in
       let kubectl_args =
         ["exec"; node.name; "--namespace"; node.namespace; "--"]
       in
       let coda_args = ["coda"; cmd; subcmd] @ flags in
       let args = kubectl_args @ coda_args in
-      let process = Unix.create_process ~prog:"kubectl" ~args in
-      let pid = process.Unix.Process_info.pid in
-      let _pid, exit_or_sig = Unix.wait (`Pid pid) in
-      match exit_or_sig with
+      let%bind process = Process.create ~prog:"kubectl" ~args () in
+      match%map.Deferred.Let_syntax Process.wait process with
       | Ok () ->
-          ()
+          Ok ()
       | Error err -> (
         match err with
         | `Exit_non_zero n ->

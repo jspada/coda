@@ -58,7 +58,7 @@ module type Engine_intf = sig
       -> ?nonce:Account.Nonce.t
       -> ?memo:string
       -> unit
-      -> unit
+      -> unit Or_error.t Deferred.t
   end
 
   module Network : sig
@@ -118,6 +118,18 @@ module type Engine_intf = sig
       -> unit Deferred.Or_error.t
 
     val wait_for_init : Node.t -> t -> unit Deferred.Or_error.t
+
+    (** wait until a payment transaction appears in an added breadcrumb
+        num_tries is the maximum number of breadcrumbs to examine
+    *)
+    val wait_for_payment :
+         t
+      -> ?num_tries:int
+      -> sender:Signature_lib.Public_key.t
+      -> receiver:Signature_lib.Public_key.t
+      -> Currency.Amount.t
+      -> Currency.Fee.t
+      -> unit Or_error.t Deferred.t
   end
 end
 

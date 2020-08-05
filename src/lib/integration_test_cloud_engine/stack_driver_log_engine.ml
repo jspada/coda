@@ -405,11 +405,10 @@ module Breadcrumb_added_query = struct
           let cmd_or_errors =
             List.map cmds ~f:(With_status.of_yojson User_command.of_yojson)
           in
+          (* if any of the commands can't be parsed, return None *)
           List.fold cmd_or_errors ~init:(Some []) ~f:(fun accum cmd_or_err ->
               match (accum, cmd_or_err) with
-              | None, _ ->
-                  None
-              | _, Error _ ->
+              | None, _ | _, Error _ ->
                   None
               | Some cmds, Ok cmd ->
                   Some (cmd :: cmds) )
@@ -681,6 +680,24 @@ let wait_for :
         ~metadata:[("error", `String (Error.to_string_hum e))] ;
       let%map res = delete t in
       Or_error.combine_errors_unit [Error e; res]
+
+let wait_for_payment ?(num_tries : int = 5) breadcrumb_added_subscription
+    ~sender:_ ~receiver:_ _amount _fee : unit Or_error.t Deferred.t =
+  let rec go n =
+    if n <= 0 then
+      return
+        (Error
+           (Error.of_string
+              (sprintf "wait_for_payment: exceeded num_tries = %d" num_tries)))
+    else
+      let%map _user_cmd_with_statuses_json =
+        Subscription.pull breadcrumb_added_subscription
+      in
+      Error
+        (Error.of_string
+           (sprintf "wait_for_payment: exceeded num_tries = %d" num_tries))
+  in
+  go num_tries
 
 let wait_for_init (node : Kubernetes_network.Node.t) t =
   let open Deferred.Or_error.Let_syntax in

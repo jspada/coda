@@ -90,6 +90,7 @@ let () =
     Term.(
       const start $ inputs
       $ const (module Block_production_test.Make : Test_functor_intf))
+      $ const (module Send_payment_test.Make : Test_functor_intf))
   in
   let test_executive_info =
     let doc = "Run coda integration test(s)." in
