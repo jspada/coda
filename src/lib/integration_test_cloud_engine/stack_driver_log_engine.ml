@@ -394,7 +394,7 @@ module Breadcrumb_added_query = struct
       ; coda_container_filter
       ; "\"Added breadcrumb user commands\"" ]
 
-  let parse json =
+  let parse json : Result.t Or_error.t =
     let open Json_parsing in
     let open Or_error.Let_syntax in
     (* JSON path to metadata entry *)
@@ -405,13 +405,14 @@ module Breadcrumb_added_query = struct
           let cmd_or_errors =
             List.map cmds ~f:(With_status.of_yojson User_command.of_yojson)
           in
-          (* if any of the commands can't be parsed, return None *)
-          List.fold cmd_or_errors ~init:(Some []) ~f:(fun accum cmd_or_err ->
+          List.fold cmd_or_errors ~init:[] ~f:(fun accum cmd_or_err ->
               match (accum, cmd_or_err) with
-              | None, _ | _, Error _ ->
-                  None
-              | Some cmds, Ok cmd ->
-                  Some (cmd :: cmds) )
+              | _, Error _ ->
+                  failwith
+                    "Breadcrumb_added_query: unable to parse JSON for user \
+                     command"
+              | cmds, Ok cmd ->
+                  cmd :: cmds )
       | _ ->
           failwith "Breadcrumb_added_query: expected `List"
     in
@@ -681,8 +682,8 @@ let wait_for :
       let%map res = delete t in
       Or_error.combine_errors_unit [Error e; res]
 
-let wait_for_payment ?(num_tries : int = 5) breadcrumb_added_subscription
-    ~sender ~receiver payment_amount : unit Or_error.t Deferred.t =
+let wait_for_payment t ?(num_tries : int = 5) ~sender ~receiver payment_amount
+    : unit Or_error.t Deferred.t =
   let rec go n =
     if n <= 0 then
       return
@@ -696,7 +697,7 @@ let wait_for_payment ?(num_tries : int = 5) breadcrumb_added_subscription
       let%bind results =
         let open Deferred.Or_error.Let_syntax in
         let%bind user_cmds_json =
-          Subscription.pull breadcrumb_added_subscription
+          Subscription.pull t.subscriptions.breadcrumb_added
         in
         Deferred.return
           (or_error_list_map user_cmds_json ~f:Breadcrumb_added_query.parse)

@@ -14,7 +14,6 @@ module Make (Engine : Engine_intf) = struct
     {default with block_producers= [{balance= "1"}]; num_snark_workers= 0}
 
   let run _network log_engine =
-    let open Network in
     (* choose sender, receiver, similar to old batch payments test *)
     let runtime_config = Runtime_config.Test_configs.transactions in
     let%bind precomputed_values, _runtime_config =
@@ -60,5 +59,5 @@ module Make (Engine : Engine_intf) = struct
       Node.send_payment ~sender ~receiver amount fee ~memo:"send payment test"
         ()
     in
-    Log_engine.wait_for ~blocks:1 ~timeout:(`Slots 30) log_engine
+    Log_engine.wait_for_payment log_engine ~sender ~receiver amount
 end

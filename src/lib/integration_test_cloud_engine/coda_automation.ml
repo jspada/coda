@@ -76,7 +76,7 @@ module Network_config = struct
     in
     let testnet_name = "integration-test-" ^ test_name in
     (* HARD CODED NETWORK VALUES *)
-    let coda_automation_location = "../automation" in
+    let coda_automation_location = "/home/steck/tmp/coda-automation" in
     let project_id = "o1labs-192920" in
     let cluster_id = "gke_o1labs-192920_us-east1_coda-infra-east" in
     let cluster_name = "coda-infra-east" in
@@ -111,7 +111,7 @@ module Network_config = struct
            (List.take keypairs (List.length block_producers)))
       |> List.unzip
     in
-    (* DEAMON CONFIG *)
+    (* DAEMON CONFIG *)
     let proof_config =
       (* TODO: lift configuration of these up Test_config.t *)
       { Runtime_config.Proof_keys.level= Some proof_level
@@ -137,7 +137,6 @@ module Network_config = struct
             { base= Accounts runtime_accounts
             ; add_genesis_winner= None
             ; num_accounts= None
-            ; add_genesis_winner= None (* TODO: is this right? *)
             ; hash= None
             ; name= None } }
     in

@@ -128,7 +128,6 @@ module type Engine_intf = sig
       -> sender:Signature_lib.Public_key.t
       -> receiver:Signature_lib.Public_key.t
       -> Currency.Amount.t
-      -> Currency.Fee.t
       -> unit Or_error.t Deferred.t
   end
 end
