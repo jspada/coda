@@ -7,7 +7,11 @@ module Node = struct
   module Pod = struct
     type t = {namespace: string; name: string}
 
-    let node_opt = ref None
+    let node_opt =
+      ref
+        (Some
+           { namespace= "regeneration"
+           ; name= "whale-block-producer-1-7b7f45546b-jhxrw" })
 
     let set ~namespace ~name = node_opt := Some {namespace; name}
 
@@ -23,6 +27,7 @@ module Node = struct
       in
       let coda_args = ["coda"; cmd; subcmd] @ flags in
       let args = kubectl_args @ coda_args in
+      eprintf "Running kubectl %s\n" String.(concat args ~sep:" ") ;
       let%bind process = Process.create ~prog:"kubectl" ~args () in
       match%map.Deferred.Let_syntax Process.wait process with
       | Ok () ->
@@ -42,8 +47,14 @@ module Node = struct
 
   let stop _ = failwith "TODO"
 
-  let send_payment ~sender ~receiver (amount : Currency.Amount.t) fee ?nonce
-      ?memo () =
+  let send_payment ~sender ~receiver amount fee ?nonce ?memo () =
+    let _logger = Logger.create () in
+    let flags =
+      [ "-public-key"
+      ; Signature_lib.Public_key.(
+          compress sender |> Compressed.to_base58_check) ]
+    in
+    let%bind _ = Pod.run_coda ~cmd:"accounts" ~subcmd:"unlock" flags in
     let flags0 =
       [ "-amount"
       ; Currency.Amount.to_string amount
@@ -57,7 +68,7 @@ module Node = struct
       ; Currency.Fee.to_string fee ]
     in
     let flags1 =
-      Option.value_map memo ~default:flags0 ~f:(fun m -> flags0 @ ["memo"; m])
+      Option.value_map memo ~default:flags0 ~f:(fun m -> flags0 @ ["-memo"; m])
     in
     let flags =
       Option.value_map nonce ~default:flags1 ~f:(fun n ->
